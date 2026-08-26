@@ -1,0 +1,694 @@
+<title>Boss AI</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600&display=swap">
+<style>
+:root{
+  --bg:#0B0E14;
+  --card:#111520;
+  --card-hi:#161B29;
+  --line:#1E2433;
+  --text:#E7EAF2;
+  --text-dim:#8892A6;
+  --blue:#5B8EFF;
+  --green:#00C970;
+  --red:#FF4C4C;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;}
+body{
+  margin:0;
+  background:var(--bg);
+  color:var(--text);
+  font-family:'Inter',system-ui,sans-serif;
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+}
+
+/* ---- Top bar ---- */
+.topbar{
+  flex:0 0 auto;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:16px 18px;
+  border-bottom:1px solid var(--line);
+  background:linear-gradient(180deg,#0D111B,#0B0E14);
+}
+.brand{
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+.brand-dot{
+  width:9px;height:9px;border-radius:50%;
+  background:var(--green);
+  box-shadow:0 0 0 3px rgba(0,201,112,0.15);
+  flex:0 0 auto;
+}
+.brand-dot.off{background:var(--red);box-shadow:0 0 0 3px rgba(255,76,76,0.15);}
+.brand h1{
+  font-family:'Space Grotesk',sans-serif;
+  font-weight:700;
+  font-size:18px;
+  letter-spacing:0.2px;
+  margin:0;
+}
+.brand span{
+  display:block;
+  font-family:'IBM Plex Mono',monospace;
+  font-size:10.5px;
+  color:var(--text-dim);
+  letter-spacing:0.5px;
+  text-transform:uppercase;
+  margin-top:1px;
+}
+.gear-btn{
+  width:38px;height:38px;
+  border-radius:10px;
+  border:1px solid var(--line);
+  background:var(--card);
+  color:var(--text-dim);
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;
+  transition:border-color .15s, color .15s;
+}
+.gear-btn:hover{border-color:var(--blue);color:var(--text);}
+.gear-btn svg{width:18px;height:18px;}
+
+/* ---- Chat area ---- */
+.chat{
+  flex:1 1 auto;
+  overflow-y:auto;
+  padding:18px 16px 8px;
+  display:flex;
+  flex-direction:column;
+  gap:14px;
+}
+.msg{
+  max-width:82%;
+  padding:12px 14px;
+  border-radius:14px;
+  font-size:15px;
+  line-height:1.5;
+  white-space:pre-wrap;
+  word-wrap:break-word;
+  animation:rise .25s ease-out;
+}
+@keyframes rise{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
+.msg.boss{
+  align-self:flex-start;
+  background:var(--card);
+  border:1px solid var(--line);
+  border-bottom-left-radius:4px;
+}
+.msg.boss .label{
+  font-family:'IBM Plex Mono',monospace;
+  font-size:10px;
+  color:var(--blue);
+  letter-spacing:0.6px;
+  text-transform:uppercase;
+  display:block;
+  margin-bottom:5px;
+}
+.msg.user{
+  align-self:flex-end;
+  background:var(--blue);
+  color:#081022;
+  border-bottom-right-radius:4px;
+  font-weight:500;
+}
+.msg.error{
+  align-self:flex-start;
+  background:rgba(255,76,76,0.08);
+  border:1px solid rgba(255,76,76,0.35);
+  color:#FFB4B4;
+}
+.empty-state{
+  margin:auto;
+  text-align:center;
+  color:var(--text-dim);
+  padding:0 30px;
+}
+.empty-state .mic-hint{
+  width:56px;height:56px;
+  margin:0 auto 16px;
+  border-radius:50%;
+  border:1px solid var(--line);
+  background:var(--card);
+  display:flex;align-items:center;justify-content:center;
+  color:var(--blue);
+}
+.empty-state h2{
+  font-family:'Space Grotesk',sans-serif;
+  color:var(--text);
+  font-size:17px;
+  margin:0 0 6px;
+}
+.empty-state p{font-size:13.5px;margin:0;line-height:1.6;}
+
+.typing{
+  align-self:flex-start;
+  display:flex;
+  gap:4px;
+  padding:14px 16px;
+  background:var(--card);
+  border:1px solid var(--line);
+  border-radius:14px;
+  border-bottom-left-radius:4px;
+}
+.typing i{
+  width:6px;height:6px;border-radius:50%;
+  background:var(--text-dim);
+  animation:bounce 1.1s infinite ease-in-out;
+}
+.typing i:nth-child(2){animation-delay:.15s;}
+.typing i:nth-child(3){animation-delay:.3s;}
+@keyframes bounce{0%,60%,100%{transform:translateY(0);opacity:.5;}30%{transform:translateY(-4px);opacity:1;}}
+
+/* ---- Input bar ---- */
+.inputbar{
+  flex:0 0 auto;
+  padding:12px 14px calc(14px + env(safe-area-inset-bottom));
+  border-top:1px solid var(--line);
+  background:#0D111B;
+}
+.input-row{
+  display:flex;
+  align-items:flex-end;
+  gap:8px;
+  background:var(--card);
+  border:1px solid var(--line);
+  border-radius:20px;
+  padding:6px 6px 6px 16px;
+  transition:border-color .15s;
+}
+.input-row:focus-within{border-color:var(--blue);}
+textarea#composer{
+  flex:1;
+  border:none;
+  background:transparent;
+  color:var(--text);
+  font-family:'Inter',sans-serif;
+  font-size:15px;
+  line-height:1.4;
+  resize:none;
+  outline:none;
+  max-height:120px;
+  padding:8px 0;
+}
+textarea#composer::placeholder{color:var(--text-dim);}
+.icon-btn{
+  flex:0 0 auto;
+  width:38px;height:38px;
+  border-radius:50%;
+  border:none;
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;
+  transition:background .15s, color .15s, transform .1s;
+  color:var(--text-dim);
+  background:transparent;
+}
+.icon-btn svg{width:19px;height:19px;}
+#mic-btn:hover{background:var(--card-hi);color:var(--text);}
+#mic-btn.listening{
+  background:var(--red);
+  color:#fff;
+  animation:pulse 1.4s infinite;
+}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(255,76,76,0.5);}70%{box-shadow:0 0 0 9px rgba(255,76,76,0);}100%{box-shadow:0 0 0 0 rgba(255,76,76,0);}}
+#send-btn{
+  background:var(--blue);
+  color:#081022;
+}
+#send-btn:active{transform:scale(0.93);}
+#send-btn:disabled{opacity:0.35;cursor:default;}
+.hint-row{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  padding:8px 6px 0;
+  font-family:'IBM Plex Mono',monospace;
+  font-size:10.5px;
+  color:var(--text-dim);
+  letter-spacing:0.3px;
+}
+.hint-row button{
+  background:none;border:none;color:var(--text-dim);
+  font-family:inherit;font-size:inherit;letter-spacing:inherit;
+  text-decoration:underline;cursor:pointer;padding:0;
+}
+.hint-row button:hover{color:var(--blue);}
+
+/* ---- Settings drawer ---- */
+.overlay{
+  position:fixed;inset:0;
+  background:rgba(0,0,0,0.55);
+  opacity:0;pointer-events:none;
+  transition:opacity .2s;
+  z-index:10;
+}
+.overlay.open{opacity:1;pointer-events:auto;}
+.drawer{
+  position:fixed;
+  top:0;right:0;bottom:0;
+  width:min(340px, 88vw);
+  background:#0D111B;
+  border-left:1px solid var(--line);
+  transform:translateX(100%);
+  transition:transform .25s ease;
+  z-index:11;
+  padding:20px;
+  overflow-y:auto;
+}
+.drawer.open{transform:translateX(0);}
+.drawer h2{
+  font-family:'Space Grotesk',sans-serif;
+  font-size:16px;margin:0 0 4px;
+}
+.drawer .sub{font-size:12.5px;color:var(--text-dim);margin:0 0 20px;line-height:1.5;}
+.field label{
+  display:block;
+  font-family:'IBM Plex Mono',monospace;
+  font-size:10.5px;
+  letter-spacing:0.5px;
+  text-transform:uppercase;
+  color:var(--text-dim);
+  margin-bottom:6px;
+}
+.field input{
+  width:100%;
+  background:var(--card);
+  border:1px solid var(--line);
+  border-radius:8px;
+  color:var(--text);
+  font-family:'IBM Plex Mono',monospace;
+  font-size:13px;
+  padding:10px 12px;
+  outline:none;
+}
+.field input:focus{border-color:var(--blue);}
+.field{margin-bottom:16px;}
+.status-line{
+  display:flex;align-items:center;gap:8px;
+  font-size:12.5px;color:var(--text-dim);
+  margin-bottom:18px;
+  padding:10px 12px;
+  background:var(--card);
+  border:1px solid var(--line);
+  border-radius:8px;
+}
+.status-dot{width:7px;height:7px;border-radius:50%;background:var(--text-dim);flex:0 0 auto;}
+.status-dot.ok{background:var(--green);}
+.status-dot.bad{background:var(--red);}
+.btn-row{display:flex;gap:8px;}
+.btn{
+  flex:1;
+  padding:11px 14px;
+  border-radius:9px;
+  border:1px solid var(--line);
+  background:var(--card);
+  color:var(--text);
+  font-family:'Inter',sans-serif;
+  font-weight:600;
+  font-size:13.5px;
+  cursor:pointer;
+}
+.btn.primary{background:var(--blue);color:#081022;border-color:var(--blue);}
+.btn:hover{filter:brightness(1.1);}
+.drawer-close{
+  position:absolute;top:18px;right:18px;
+  background:none;border:none;color:var(--text-dim);
+  cursor:pointer;width:30px;height:30px;
+}
+.voice-toggle{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:12px 2px;border-top:1px solid var(--line);margin-top:4px;
+}
+.voice-toggle span{font-size:13.5px;}
+.switch{
+  width:40px;height:22px;border-radius:11px;background:var(--card);
+  border:1px solid var(--line);position:relative;cursor:pointer;flex:0 0 auto;
+}
+.switch::after{
+  content:'';position:absolute;top:2px;left:2px;width:16px;height:16px;
+  border-radius:50%;background:var(--text-dim);transition:transform .15s, background .15s;
+}
+.switch.on{background:rgba(91,142,255,0.15);border-color:var(--blue);}
+.switch.on::after{transform:translateX(18px);background:var(--blue);}
+
+@media (prefers-color-scheme: light){
+  :root:not([data-theme="light"]){
+    --bg:#0B0E14; --card:#111520; --card-hi:#161B29; --line:#1E2433; --text:#E7EAF2; --text-dim:#8892A6;
+  }
+}
+</style>
+
+<div class="topbar">
+  <div class="brand">
+    <div class="brand-dot off" id="conn-dot"></div>
+    <div>
+      <h1>Boss AI</h1>
+      <span id="conn-label">connecting…</span>
+    </div>
+  </div>
+  <button class="gear-btn" id="open-settings" aria-label="Settings">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06A1.65 1.65 0 005 15a1.65 1.65 0 00-1.51-1H3.4a2 2 0 010-4h.09A1.65 1.65 0 005 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06A1.65 1.65 0 009 5a1.65 1.65 0 001-1.51V3.4a2 2 0 014 0v.09A1.65 1.65 0 0015.6 5a1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"></path></svg>
+  </button>
+</div>
+
+<div class="chat" id="chat">
+  <div class="empty-state" id="empty-state">
+    <div class="mic-hint">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="24" height="24"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"></path><path d="M19 10v2a7 7 0 01-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
+    </div>
+    <h2>Talk to Boss</h2>
+    <p>Type or tap the mic. Boss pulls from 30 LLMs to answer<br>with the best info it's got.</p>
+  </div>
+</div>
+
+<div class="inputbar">
+  <div class="input-row">
+    <textarea id="composer" placeholder="Ask Boss anything…" rows="1"></textarea>
+    <button class="icon-btn" id="mic-btn" aria-label="Voice input">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"></path><path d="M19 10v2a7 7 0 01-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
+    </button>
+    <button class="icon-btn" id="send-btn" aria-label="Send" disabled>
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"></path></svg>
+    </button>
+  </div>
+  <div class="hint-row">
+    <span id="mode-hint">Text mode</span>
+    <button id="clear-btn">clear chat</button>
+  </div>
+</div>
+
+<div class="overlay" id="overlay"></div>
+<div class="drawer" id="drawer">
+  <button class="drawer-close" id="close-settings" aria-label="Close">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+  </button>
+  <h2>Settings</h2>
+  <p class="sub">Boss lives on your Raspberry Pi. Paste the current tunnel address below to connect.</p>
+
+  <div class="status-line">
+    <div class="status-dot" id="drawer-dot"></div>
+    <span id="drawer-status">Not checked yet</span>
+  </div>
+
+  <div class="field">
+    <label for="url-input">Backend address</label>
+    <input id="url-input" type="text" placeholder="https://your-tunnel.trycloudflare.com" autocapitalize="off" autocorrect="off" spellcheck="false">
+  </div>
+
+  <div class="btn-row">
+    <button class="btn" id="test-btn">Test connection</button>
+    <button class="btn primary" id="save-btn">Save</button>
+  </div>
+
+  <div class="voice-toggle">
+    <span>Speak replies out loud</span>
+    <div class="switch" id="voice-out-switch"></div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const STORAGE_KEY = 'boss_ai_backend_url';
+  const VOICE_OUT_KEY = 'boss_ai_voice_out';
+  const HISTORY_KEY = 'boss_ai_history';
+
+  const chat = document.getElementById('chat');
+  const emptyState = document.getElementById('empty-state');
+  const composer = document.getElementById('composer');
+  const sendBtn = document.getElementById('send-btn');
+  const micBtn = document.getElementById('mic-btn');
+  const modeHint = document.getElementById('mode-hint');
+  const clearBtn = document.getElementById('clear-btn');
+
+  const connDot = document.getElementById('conn-dot');
+  const connLabel = document.getElementById('conn-label');
+
+  const overlay = document.getElementById('overlay');
+  const drawer = document.getElementById('drawer');
+  const openSettings = document.getElementById('open-settings');
+  const closeSettings = document.getElementById('close-settings');
+  const urlInput = document.getElementById('url-input');
+  const testBtn = document.getElementById('test-btn');
+  const saveBtn = document.getElementById('save-btn');
+  const drawerDot = document.getElementById('drawer-dot');
+  const drawerStatus = document.getElementById('drawer-status');
+  const voiceOutSwitch = document.getElementById('voice-out-switch');
+
+  let backendUrl = '';
+  let voiceOut = false;
+  let history = [];
+
+  function safeGet(key){ try { return localStorage.getItem(key); } catch(e){ return null; } }
+  function safeSet(key,val){ try { localStorage.setItem(key,val); } catch(e){} }
+
+  try {
+    backendUrl = safeGet(STORAGE_KEY) || '';
+    voiceOut = safeGet(VOICE_OUT_KEY) === '1';
+    const savedHistory = safeGet(HISTORY_KEY);
+    if (savedHistory) history = JSON.parse(savedHistory);
+  } catch(e){}
+
+  urlInput.value = backendUrl;
+  if (voiceOut) voiceOutSwitch.classList.add('on');
+
+  function renderHistory(){
+    if (history.length === 0) return;
+    emptyState.style.display = 'none';
+    history.forEach(m => addBubble(m.role, m.content, false));
+    chat.scrollTop = chat.scrollHeight;
+  }
+  renderHistory();
+
+  function addBubble(role, text, animate){
+    emptyState.style.display = 'none';
+    const div = document.createElement('div');
+    div.className = 'msg ' + (role === 'user' ? 'user' : role === 'error' ? 'error' : 'boss');
+    if (role === 'boss') {
+      const label = document.createElement('span');
+      label.className = 'label';
+      label.textContent = 'BOSS';
+      div.appendChild(label);
+      const body = document.createElement('span');
+      body.textContent = text;
+      div.appendChild(body);
+    } else {
+      div.textContent = text;
+    }
+    if (animate === false) div.style.animation = 'none';
+    chat.appendChild(div);
+    chat.scrollTop = chat.scrollHeight;
+    return div;
+  }
+
+  function addTyping(){
+    const div = document.createElement('div');
+    div.className = 'typing';
+    div.id = 'typing-indicator';
+    div.innerHTML = '<i></i><i></i><i></i>';
+    chat.appendChild(div);
+    chat.scrollTop = chat.scrollHeight;
+  }
+  function removeTyping(){
+    const el = document.getElementById('typing-indicator');
+    if (el) el.remove();
+  }
+
+  function saveHistory(){
+    try { safeSet(HISTORY_KEY, JSON.stringify(history.slice(-40))); } catch(e){}
+  }
+
+  function setConn(state){
+    // state: 'ok' | 'bad' | 'unknown'
+    connDot.classList.remove('off');
+    drawerDot.classList.remove('ok','bad');
+    if (state === 'ok') {
+      connLabel.textContent = 'connected';
+      drawerDot.classList.add('ok');
+      drawerStatus.textContent = 'Connected to Boss';
+    } else if (state === 'bad') {
+      connDot.classList.add('off');
+      connLabel.textContent = 'offline';
+      drawerDot.classList.add('bad');
+      drawerStatus.textContent = 'Could not reach Boss';
+    } else {
+      connDot.classList.add('off');
+      connLabel.textContent = backendUrl ? 'not checked' : 'no address set';
+      drawerStatus.textContent = backendUrl ? 'Not checked yet' : 'Paste your backend address below';
+    }
+  }
+  setConn('unknown');
+
+  async function checkConnection(silent){
+    if (!backendUrl) { setConn('unknown'); return false; }
+    try {
+      const res = await fetch(backendUrl.replace(/\/$/,'') + '/api/ai-chat', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({message:'ping', history:[]})
+      });
+      if (res.ok || res.status === 200) { setConn('ok'); return true; }
+      setConn('bad'); return false;
+    } catch(e){
+      setConn('bad'); return false;
+    }
+  }
+  if (backendUrl) checkConnection(true);
+
+  // ---- Settings drawer ----
+  function openDrawer(){ overlay.classList.add('open'); drawer.classList.add('open'); }
+  function closeDrawer(){ overlay.classList.remove('open'); drawer.classList.remove('open'); }
+  openSettings.addEventListener('click', openDrawer);
+  closeSettings.addEventListener('click', closeDrawer);
+  overlay.addEventListener('click', closeDrawer);
+
+  testBtn.addEventListener('click', async () => {
+    backendUrl = urlInput.value.trim();
+    drawerStatus.textContent = 'Testing…';
+    drawerDot.classList.remove('ok','bad');
+    await checkConnection(true);
+  });
+  saveBtn.addEventListener('click', () => {
+    backendUrl = urlInput.value.trim();
+    safeSet(STORAGE_KEY, backendUrl);
+    checkConnection(true);
+    closeDrawer();
+  });
+  voiceOutSwitch.addEventListener('click', () => {
+    voiceOut = !voiceOut;
+    voiceOutSwitch.classList.toggle('on', voiceOut);
+    safeSet(VOICE_OUT_KEY, voiceOut ? '1' : '0');
+  });
+
+  clearBtn.addEventListener('click', () => {
+    history = [];
+    saveHistory();
+    chat.innerHTML = '';
+    chat.appendChild(emptyState);
+    emptyState.style.display = 'flex';
+  });
+
+  // ---- Composer ----
+  function autoGrow(){
+    composer.style.height = 'auto';
+    composer.style.height = Math.min(composer.scrollHeight, 120) + 'px';
+  }
+  composer.addEventListener('input', () => {
+    autoGrow();
+    sendBtn.disabled = composer.value.trim().length === 0;
+  });
+  composer.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  });
+
+  async function sendMessage(){
+    const text = composer.value.trim();
+    if (!text) return;
+    if (!backendUrl) {
+      addBubble('error', "Boss isn't connected yet. Tap the gear icon and paste in your backend address.");
+      openDrawer();
+      return;
+    }
+    composer.value = '';
+    autoGrow();
+    sendBtn.disabled = true;
+    addBubble('user', text);
+    history.push({role:'user', content:text});
+    saveHistory();
+    addTyping();
+
+    try {
+      const res = await fetch(backendUrl.replace(/\/$/,'') + '/api/ai-chat', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({message:text, history:history.slice(-20)})
+      });
+      removeTyping();
+      if (!res.ok) throw new Error('status ' + res.status);
+      const data = await res.json();
+      const reply = (data && data.message) ? data.message : "Boss didn't send anything back.";
+      addBubble('boss', reply);
+      history.push({role:'assistant', content:reply});
+      saveHistory();
+      setConn('ok');
+      if (voiceOut) speak(reply);
+    } catch(err){
+      removeTyping();
+      addBubble('error', "Couldn't reach Boss. Check the address in Settings, or make sure the Pi is online.");
+      setConn('bad');
+    }
+  }
+  sendBtn.addEventListener('click', sendMessage);
+
+  // ---- Voice input ----
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  let recognizing = false;
+  let recognition = null;
+
+  if (SR) {
+    recognition = new SR();
+    recognition.continuous = false;
+    recognition.interimResults = true;
+    recognition.lang = 'en-US';
+
+    recognition.onstart = () => {
+      recognizing = true;
+      micBtn.classList.add('listening');
+      modeHint.textContent = 'Listening…';
+    };
+    recognition.onend = () => {
+      recognizing = false;
+      micBtn.classList.remove('listening');
+      modeHint.textContent = 'Text mode';
+    };
+    recognition.onerror = () => {
+      recognizing = false;
+      micBtn.classList.remove('listening');
+      modeHint.textContent = 'Text mode';
+    };
+    recognition.onresult = (event) => {
+      let transcript = '';
+      for (let i = 0; i < event.results.length; i++) {
+        transcript += event.results[i][0].transcript;
+      }
+      composer.value = transcript;
+      autoGrow();
+      sendBtn.disabled = transcript.trim().length === 0;
+      if (event.results[event.results.length - 1].isFinal) {
+        sendMessage();
+      }
+    };
+
+    micBtn.addEventListener('click', () => {
+      if (recognizing) { recognition.stop(); return; }
+      try { recognition.start(); } catch(e){}
+    });
+  } else {
+    micBtn.style.display = 'none';
+    modeHint.textContent = 'Voice not supported on this browser';
+  }
+
+  function speak(text){
+    if (!('speechSynthesis' in window)) return;
+    try {
+      window.speechSynthesis.cancel();
+      const utter = new SpeechSynthesisUtterance(text);
+      utter.rate = 1.02;
+      utter.pitch = 1;
+      window.speechSynthesis.speak(utter);
+    } catch(e){}
+  }
+
+  if (!backendUrl) {
+    setTimeout(openDrawer, 400);
+  }
+})();
+</script>
