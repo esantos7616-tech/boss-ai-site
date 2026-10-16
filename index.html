@@ -1,3 +1,6 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
 <title>Boss AI</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600&display=swap">
@@ -232,7 +235,10 @@ textarea#composer::placeholder{color:var(--text-dim);}
   font-size:10.5px;
   color:var(--text-dim);
   letter-spacing:0.3px;
+  gap:10px;
+  white-space:nowrap;
 }
+.hint-row span:nth-child(2){overflow:hidden;text-overflow:ellipsis;}
 .hint-row button{
   background:none;border:none;color:var(--text-dim);
   font-family:inherit;font-size:inherit;letter-spacing:inherit;
@@ -337,6 +343,56 @@ textarea#composer::placeholder{color:var(--text-dim);}
 .switch.on{background:rgba(91,142,255,0.15);border-color:var(--blue);}
 .switch.on::after{transform:translateX(18px);background:var(--blue);}
 
+/* ---- Team metadata + feedback under Boss replies ---- */
+.meta-row{
+  display:flex;align-items:center;gap:6px;flex-wrap:wrap;
+  margin-top:10px;padding-top:8px;border-top:1px solid var(--line);
+  white-space:normal;
+}
+.meta-info{
+  background:none;border:none;padding:0;cursor:pointer;
+  font-family:'IBM Plex Mono',monospace;font-size:10.5px;letter-spacing:0.3px;
+  color:var(--text-dim);text-align:left;flex:1 1 auto;
+}
+.meta-info:hover{color:var(--text);}
+.consensus-high{color:var(--green);}
+.consensus-medium{color:#E5B94E;}
+.consensus-low{color:var(--red);}
+.fb-btn{
+  width:28px;height:28px;border-radius:8px;border:1px solid var(--line);
+  background:transparent;color:var(--text-dim);cursor:pointer;
+  display:flex;align-items:center;justify-content:center;flex:0 0 auto;
+}
+.fb-btn svg{width:14px;height:14px;}
+.fb-btn:hover{color:var(--text);border-color:var(--blue);}
+.fb-btn.chosen{color:#081022;background:var(--blue);border-color:var(--blue);}
+.fb-btn:disabled{cursor:default;}
+.meta-details{
+  display:none;margin-top:8px;
+  font-family:'IBM Plex Mono',monospace;font-size:11px;line-height:1.6;color:var(--text-dim);
+  white-space:pre-wrap;
+}
+.meta-details.open{display:block;}
+
+/* ---- Team drawer ---- */
+.topbar-actions{display:flex;gap:8px;}
+.section-title{
+  font-family:'IBM Plex Mono',monospace;font-size:10.5px;letter-spacing:0.5px;
+  text-transform:uppercase;color:var(--text-dim);margin:20px 0 8px;
+}
+.team-list{display:flex;flex-direction:column;gap:6px;}
+.team-item{
+  display:flex;align-items:center;gap:8px;
+  padding:8px 10px;background:var(--card);border:1px solid var(--line);border-radius:8px;
+  font-size:12.5px;
+}
+.team-item .name{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.team-item .num{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--text-dim);flex:0 0 auto;}
+.team-item.boss{border-color:var(--blue);}
+.team-item a{color:var(--blue);font-size:11.5px;text-decoration:none;flex:0 0 auto;}
+.team-summary{font-size:12.5px;color:var(--text-dim);line-height:1.6;}
+.fine-print{font-size:11.5px;color:var(--text-dim);line-height:1.5;margin-top:14px;}
+
 @media (prefers-color-scheme: light){
   :root:not([data-theme="light"]){
     --bg:#0B0E14; --card:#111520; --card-hi:#161B29; --line:#1E2433; --text:#E7EAF2; --text-dim:#8892A6;
@@ -352,9 +408,14 @@ textarea#composer::placeholder{color:var(--text-dim);}
       <span id="conn-label">connecting…</span>
     </div>
   </div>
+  <div class="topbar-actions">
+  <button class="gear-btn" id="open-team" aria-label="Team">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 00-3-3.87"></path><path d="M16 3.13a4 4 0 010 7.75"></path></svg>
+  </button>
   <button class="gear-btn" id="open-settings" aria-label="Settings">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06A1.65 1.65 0 005 15a1.65 1.65 0 00-1.51-1H3.4a2 2 0 010-4h.09A1.65 1.65 0 005 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06A1.65 1.65 0 009 5a1.65 1.65 0 001-1.51V3.4a2 2 0 014 0v.09A1.65 1.65 0 0015.6 5a1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"></path></svg>
   </button>
+  </div>
 </div>
 
 <div class="chat" id="chat">
@@ -363,7 +424,7 @@ textarea#composer::placeholder{color:var(--text-dim);}
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="24" height="24"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"></path><path d="M19 10v2a7 7 0 01-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
     </div>
     <h2>Talk to Boss</h2>
-    <p>Type or tap the mic. Boss pulls from 30 LLMs to answer<br>with the best info it's got.</p>
+    <p>Type or tap the mic. Boss runs a team of 30 free LLMs: a supervisor picks specialist agents, they work in parallel, and the supervisor fact-checks them before answering.</p>
   </div>
 </div>
 
@@ -379,6 +440,7 @@ textarea#composer::placeholder{color:var(--text-dim);}
   </div>
   <div class="hint-row">
     <span id="mode-hint">Text mode</span>
+    <span>Education only, not financial advice</span>
     <button id="clear-btn">clear chat</button>
   </div>
 </div>
@@ -401,6 +463,11 @@ textarea#composer::placeholder{color:var(--text-dim);}
     <input id="url-input" type="text" placeholder="https://your-tunnel.trycloudflare.com" autocapitalize="off" autocorrect="off" spellcheck="false">
   </div>
 
+  <div class="field">
+    <label for="key-input">Access key</label>
+    <input id="key-input" type="password" placeholder="BOSS_ACCESS_KEY from server/.env" autocapitalize="off" autocorrect="off" spellcheck="false">
+  </div>
+
   <div class="btn-row">
     <button class="btn" id="test-btn">Test connection</button>
     <button class="btn primary" id="save-btn">Save</button>
@@ -412,11 +479,21 @@ textarea#composer::placeholder{color:var(--text-dim);}
   </div>
 </div>
 
+<div class="drawer" id="team-drawer">
+  <button class="drawer-close" id="close-team" aria-label="Close">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+  </button>
+  <h2>The Team</h2>
+  <p class="sub">The supervisor is the model with the lowest measured hallucination rate. Your thumbs up and down train which models and agents get picked.</p>
+  <div id="team-body" class="team-summary">Connect to Boss to see the team.</div>
+</div>
+
 <script>
 (function(){
   const STORAGE_KEY = 'boss_ai_backend_url';
   const VOICE_OUT_KEY = 'boss_ai_voice_out';
   const HISTORY_KEY = 'boss_ai_history';
+  const ACCESS_KEY = 'boss_ai_access_key';
 
   const chat = document.getElementById('chat');
   const emptyState = document.getElementById('empty-state');
@@ -439,8 +516,12 @@ textarea#composer::placeholder{color:var(--text-dim);}
   const drawerDot = document.getElementById('drawer-dot');
   const drawerStatus = document.getElementById('drawer-status');
   const voiceOutSwitch = document.getElementById('voice-out-switch');
+  const keyInput = document.getElementById('key-input');
+  const teamDrawer = document.getElementById('team-drawer');
+  const teamBody = document.getElementById('team-body');
 
   let backendUrl = '';
+  let accessKey = '';
   let voiceOut = false;
   let history = [];
 
@@ -449,23 +530,88 @@ textarea#composer::placeholder{color:var(--text-dim);}
 
   try {
     backendUrl = safeGet(STORAGE_KEY) || '';
+    accessKey = safeGet(ACCESS_KEY) || '';
     voiceOut = safeGet(VOICE_OUT_KEY) === '1';
     const savedHistory = safeGet(HISTORY_KEY);
     if (savedHistory) history = JSON.parse(savedHistory);
   } catch(e){}
 
   urlInput.value = backendUrl;
+  keyInput.value = accessKey;
+
+  function api(path, opts){
+    opts = opts || {};
+    const headers = Object.assign({'Content-Type':'application/json'}, opts.headers || {});
+    if (accessKey) headers['X-Boss-Key'] = accessKey;
+    return fetch(backendUrl.replace(/\/$/,'') + path, Object.assign({}, opts, {headers}));
+  }
   if (voiceOut) voiceOutSwitch.classList.add('on');
 
   function renderHistory(){
     if (history.length === 0) return;
     emptyState.style.display = 'none';
-    history.forEach(m => addBubble(m.role, m.content, false));
+    history.forEach(m => addBubble(m.role === 'assistant' ? 'boss' : m.role, m.content, false, m.meta));
     chat.scrollTop = chat.scrollHeight;
   }
   renderHistory();
 
-  function addBubble(role, text, animate){
+  const ICON_UP = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 9V5a3 3 0 00-3-3l-4 9v11h11.28a2 2 0 002-1.7l1.38-9a2 2 0 00-2-2.3H14z"></path><path d="M7 22H4a2 2 0 01-2-2v-7a2 2 0 012-2h3"></path></svg>';
+  const ICON_DOWN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 15v4a3 3 0 003 3l4-9V2H5.72a2 2 0 00-2 1.7l-1.38 9a2 2 0 002 2.3H10z"></path><path d="M17 2h3a2 2 0 012 2v7a2 2 0 01-2 2h-3"></path></svg>';
+
+  function addMeta(div, meta){
+    if (!meta || !meta.supervisor) return;
+    const row = document.createElement('div');
+    row.className = 'meta-row';
+    const info = document.createElement('button');
+    info.className = 'meta-info';
+    const team = meta.team || [];
+    info.textContent = 'Supervisor ' + meta.supervisor.id + (team.length ? ' · ' + team.length + ' agent' + (team.length === 1 ? '' : 's') : '');
+    if (meta.consensus && meta.consensus !== 'unknown' && meta.consensus !== 'n/a') {
+      const c = document.createElement('span');
+      c.className = 'consensus-' + meta.consensus;
+      c.textContent = ' · ' + meta.consensus + ' agreement';
+      info.appendChild(c);
+    }
+    row.appendChild(info);
+
+    const details = document.createElement('div');
+    details.className = 'meta-details';
+    const lines = team.map(t => '- ' + t.agent + ' on ' + t.model + (t.confidence != null ? ' (' + Math.round(t.confidence * 100) + '% sure)' : ''));
+    if (meta.spawned && meta.spawned.length) lines.push('New agent' + (meta.spawned.length > 1 ? 's' : '') + ' created: ' + meta.spawned.join(', '));
+    if (meta.market && meta.market.length) lines.push('Live data used: ' + meta.market.join(', '));
+    if (meta.failed) lines.push(meta.failed + ' agent(s) could not answer (rate limits)');
+    details.textContent = lines.join('\n');
+    info.addEventListener('click', () => details.classList.toggle('open'));
+
+    if (meta.interactionId) {
+      const up = document.createElement('button');
+      const down = document.createElement('button');
+      up.className = down.className = 'fb-btn';
+      up.innerHTML = ICON_UP; down.innerHTML = ICON_DOWN;
+      up.setAttribute('aria-label', 'Good answer'); down.setAttribute('aria-label', 'Bad answer');
+      const mark = (btn, rating) => {
+        if (meta.rated) { btn.classList.toggle('chosen', meta.rated === rating); up.disabled = down.disabled = true; }
+      };
+      const rate = async (rating, btn) => {
+        if (meta.rated) return;
+        let comment = '';
+        if (rating < 0) comment = window.prompt('What was wrong? Boss will remember this. (optional)') || '';
+        meta.rated = rating;
+        mark(up, 1); mark(down, -1);
+        saveHistory();
+        try { await api('/api/feedback', {method:'POST', body: JSON.stringify({interactionId: meta.interactionId, rating, comment})}); } catch(e){}
+      };
+      up.addEventListener('click', () => rate(1, up));
+      down.addEventListener('click', () => rate(-1, down));
+      mark(up, 1); mark(down, -1);
+      row.appendChild(up);
+      row.appendChild(down);
+    }
+    div.appendChild(row);
+    div.appendChild(details);
+  }
+
+  function addBubble(role, text, animate, meta){
     emptyState.style.display = 'none';
     const div = document.createElement('div');
     div.className = 'msg ' + (role === 'user' ? 'user' : role === 'error' ? 'error' : 'boss');
@@ -477,6 +623,7 @@ textarea#composer::placeholder{color:var(--text-dim);}
       const body = document.createElement('span');
       body.textContent = text;
       div.appendChild(body);
+      addMeta(div, meta);
     } else {
       div.textContent = text;
     }
@@ -527,13 +674,19 @@ textarea#composer::placeholder{color:var(--text-dim);}
   async function checkConnection(silent){
     if (!backendUrl) { setConn('unknown'); return false; }
     try {
-      const res = await fetch(backendUrl.replace(/\/$/,'') + '/api/ai-chat', {
-        method: 'POST',
-        headers: {'Content-Type':'application/json'},
-        body: JSON.stringify({message:'ping', history:[]})
-      });
-      if (res.ok || res.status === 200) { setConn('ok'); return true; }
-      setConn('bad'); return false;
+      const res = await api('/api/health', {method:'GET'});
+      if (!res.ok) { setConn('bad'); return false; }
+      const h = await res.json();
+      setConn('ok');
+      if (h.needsKey && !h.authorized) {
+        connLabel.textContent = 'access key needed';
+        drawerStatus.textContent = 'Connected, but the access key is missing or wrong';
+        connDot.classList.add('off');
+        return false;
+      }
+      connLabel.textContent = h.availableModels + '/' + h.totalModels + ' models · ' + h.agents + ' agents';
+      if (!h.availableModels) drawerStatus.textContent = 'Connected, but no free API keys are set on the Pi yet';
+      return true;
     } catch(e){
       setConn('bad'); return false;
     }
@@ -542,13 +695,98 @@ textarea#composer::placeholder{color:var(--text-dim);}
 
   // ---- Settings drawer ----
   function openDrawer(){ overlay.classList.add('open'); drawer.classList.add('open'); }
-  function closeDrawer(){ overlay.classList.remove('open'); drawer.classList.remove('open'); }
+  function closeDrawer(){ overlay.classList.remove('open'); drawer.classList.remove('open'); teamDrawer.classList.remove('open'); }
   openSettings.addEventListener('click', openDrawer);
   closeSettings.addEventListener('click', closeDrawer);
   overlay.addEventListener('click', closeDrawer);
+  document.getElementById('close-team').addEventListener('click', closeDrawer);
+  document.getElementById('open-team').addEventListener('click', () => {
+    overlay.classList.add('open');
+    teamDrawer.classList.add('open');
+    loadTeam();
+  });
+
+  function el(tag, cls, text){
+    const e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text != null) e.textContent = text;
+    return e;
+  }
+  function item(name, num, opts){
+    opts = opts || {};
+    const row = el('div', 'team-item' + (opts.boss ? ' boss' : ''));
+    const dot = el('div', 'status-dot' + (opts.ok === true ? ' ok' : opts.ok === false ? ' bad' : ''));
+    row.appendChild(dot);
+    row.appendChild(el('span', 'name', name));
+    if (opts.link) { const a = el('a', null, 'get free key'); a.href = opts.link; a.target = '_blank'; a.rel = 'noopener'; row.appendChild(a); }
+    if (num) row.appendChild(el('span', 'num', num));
+    return row;
+  }
+  const pct = (x) => Math.round(x * 100) + '%';
+
+  async function loadTeam(){
+    if (!backendUrl) { teamBody.textContent = 'Set your backend address in Settings first.'; return; }
+    teamBody.textContent = 'Loading…';
+    let t;
+    try {
+      const res = await api('/api/team', {method:'GET'});
+      if (!res.ok) throw new Error(res.status === 401 ? 'Wrong or missing access key (see Settings).' : 'status ' + res.status);
+      t = await res.json();
+    } catch(e){
+      teamBody.textContent = "Couldn't load the team. " + (e.message || '');
+      return;
+    }
+    teamBody.innerHTML = '';
+    const live = t.models.filter(m => m.available).length;
+    teamBody.appendChild(el('div', null, live + ' of ' + t.models.length + ' models online · ' + t.agents.length + ' agents (' + t.agents.filter(a => !a.seed).length + ' created by the team)'));
+
+    teamBody.appendChild(el('div', 'section-title', 'Free providers'));
+    const prov = el('div', 'team-list');
+    t.providers.forEach(p => prov.appendChild(item(p.label, p.ready ? 'connected' : '', {ok: p.ready, link: p.ready ? null : (p.signup.match(/https?:\/\/\S+/) || [])[0]})));
+    teamBody.appendChild(prov);
+
+    teamBody.appendChild(el('div', 'section-title', 'Models (score · hallucination)'));
+    const models = el('div', 'team-list');
+    t.models
+      .slice()
+      .sort((a, b) => (b.id === t.supervisor) - (a.id === t.supervisor) || b.available - a.available || b.score - a.score)
+      .forEach(m => {
+        const hall = m.hallucinationTests ? pct(m.hallucinationRate) : 'untested';
+        const label = (m.id === t.supervisor ? 'SUPERVISOR · ' : '') + m.id + (m.benched ? ' (' + m.benched + ')' : '');
+        models.appendChild(item(label, pct(m.score) + ' · ' + hall, {ok: m.available, boss: m.id === t.supervisor}));
+      });
+    teamBody.appendChild(models);
+
+    teamBody.appendChild(el('div', 'section-title', 'Agents (score · ratings)'));
+    const ag = el('div', 'team-list');
+    t.agents
+      .slice()
+      .sort((a, b) => b.score - a.score)
+      .forEach(a => ag.appendChild(item(a.name + (a.seed ? '' : ' (new)'), pct(a.score) + ' · ' + a.ratings, {ok: true})));
+    teamBody.appendChild(ag);
+
+    teamBody.appendChild(el('div', 'section-title', 'What Boss remembers about you'));
+    const mem = el('div', 'team-list');
+    if (!t.memory.facts.length && !t.memory.lessons.length) mem.appendChild(el('div', 'team-summary', 'Nothing yet. Tell Boss your goals, budget and experience.'));
+    t.memory.facts.forEach(f => mem.appendChild(item(f, '')));
+    t.memory.lessons.forEach(l => mem.appendChild(item('Lesson: ' + l, '')));
+    teamBody.appendChild(mem);
+    if (t.memory.facts.length || t.memory.lessons.length) {
+      const forget = el('button', 'btn', 'Forget everything');
+      forget.style.marginTop = '10px';
+      forget.addEventListener('click', async () => {
+        if (!window.confirm('Erase everything Boss remembers about you?')) return;
+        try { await api('/api/memory/forget', {method:'POST'}); } catch(e){}
+        loadTeam();
+      });
+      teamBody.appendChild(forget);
+    }
+    teamBody.appendChild(el('p', 'fine-print', 'Boss is an educational tool. It can be wrong, and nothing here is personalized financial advice. Never invest money you cannot afford to lose.'));
+  }
 
   testBtn.addEventListener('click', async () => {
     backendUrl = urlInput.value.trim();
+    accessKey = keyInput.value.trim();
     drawerStatus.textContent = 'Testing…';
     drawerDot.classList.remove('ok','bad');
     await checkConnection(true);
@@ -556,6 +794,8 @@ textarea#composer::placeholder{color:var(--text-dim);}
   saveBtn.addEventListener('click', () => {
     backendUrl = urlInput.value.trim();
     safeSet(STORAGE_KEY, backendUrl);
+    accessKey = keyInput.value.trim();
+    safeSet(ACCESS_KEY, accessKey);
     checkConnection(true);
     closeDrawer();
   });
@@ -606,19 +846,24 @@ textarea#composer::placeholder{color:var(--text-dim);}
     addTyping();
 
     try {
-      const res = await fetch(backendUrl.replace(/\/$/,'') + '/api/ai-chat', {
+      const res = await api('/api/ai-chat', {
         method: 'POST',
-        headers: {'Content-Type':'application/json'},
-        body: JSON.stringify({message:text, history:history.slice(-20)})
+        body: JSON.stringify({message:text, history:history.slice(-20).map(m => ({role:m.role, content:m.content}))})
       });
       removeTyping();
+      if (res.status === 401) {
+        addBubble('error', 'Boss needs your access key. Add it in Settings.');
+        openDrawer();
+        return;
+      }
       if (!res.ok) throw new Error('status ' + res.status);
       const data = await res.json();
       const reply = (data && data.message) ? data.message : "Boss didn't send anything back.";
-      addBubble('boss', reply);
-      history.push({role:'assistant', content:reply});
+      const meta = data && data.meta && data.meta.supervisor ? data.meta : null;
+      addBubble('boss', reply, true, meta);
+      history.push({role:'assistant', content:reply, meta});
       saveHistory();
-      setConn('ok');
+      if (connDot.classList.contains('off')) checkConnection(true);
       if (voiceOut) speak(reply);
     } catch(err){
       removeTyping();
