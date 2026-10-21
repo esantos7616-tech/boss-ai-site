@@ -106,7 +106,7 @@ test('agents: starters are optional and come from the editable seed file', () =>
   assert.equal(agents.list().length, 0);
   store._reset();
   delete process.env.STARTER_AGENTS;
-  assert.equal(agents.list().length, 12);
+  assert.equal(agents.list().length, 16);
 });
 
 test('agents: the supervisor can rewrite a weak agent and its record gets a fresh trial', () => {

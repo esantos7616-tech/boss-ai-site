@@ -213,3 +213,63 @@ test('daily briefing runs the full team and is stored', async () => {
   assert.ok(item.meta.team.length >= 1);
   assert.equal(briefing.latest().id, item.id);
 });
+
+// Fake Yahoo Finance: symbol search + chart data.
+function fakeYahoo(url) {
+  if (url.includes('/v1/finance/search')) {
+    const q = decodeURIComponent(url.match(/q=([^&]+)/)[1]).toLowerCase();
+    if (q === 'rocket lab') return JSON.stringify({ quotes: [{ symbol: 'RKLB', quoteType: 'EQUITY', longname: 'Rocket Lab Corporation' }] });
+    return JSON.stringify({ quotes: [] });
+  }
+  const sym = decodeURIComponent(url.match(/chart\/([^?]+)/)?.[1] || '');
+  if (sym !== 'RKLB' && sym !== 'AAPL') return { status: 404 };
+  const closes = Array.from({ length: 252 }, (_, i) => 10 + i * 0.1);
+  closes[251] = 37.5; closes[250] = 36.0;
+  return JSON.stringify({ chart: { result: [{
+    meta: { regularMarketPrice: 37.5, currency: 'USD', longName: sym === 'RKLB' ? 'Rocket Lab Corporation' : 'Apple Inc.',
+      regularMarketTime: 1792512000, fullExchangeName: 'NasdaqCM', regularMarketDayHigh: 38.1, regularMarketDayLow: 35.9 },
+    indicators: { quote: [{ close: closes }] },
+  }] } });
+}
+
+test('price questions: any company name -> verified ticker -> exact price, with no AI writing the number', async () => {
+  process.env.MARKET_DATA = '1';
+  const calls = mockFetch((b) => {
+    if (b.messages[0].content.includes(PLAN)) return '{"intent":"quote","needs_team":true,"agents":[],"symbols":["Rocket Lab","Zentrovax Hydro"]}';
+    throw new Error('price answers must not call any other model');
+  }, fakeYahoo);
+  const out = await orchestrator.handle("what's rocket lab trading at right now?");
+  assert.equal(calls.length, 1);
+  assert.match(out.message, /Rocket Lab Corporation \(RKLB\): \$37\.50/);
+  assert.match(out.message, /Change: \+1\.50 \(\+4\.2%\) vs previous close \$36\.00/);
+  assert.match(out.message, /Day range: 35\.90 - 38\.10/);
+  assert.match(out.message, /on NasdaqCM \(Yahoo Finance\)/);
+  assert.match(out.message, /couldn't get live data for Zentrovax Hydro/);
+  assert.equal(out.meta.verified, true);
+  assert.deepEqual(out.meta.market, ['RKLB']);
+});
+
+test('price + analysis questions go to the team with the verified numbers', async () => {
+  process.env.MARKET_DATA = '1';
+  let agentData = '';
+  mockFetch((b) => {
+    if (b.messages[0].content.includes(PLAN)) return '{"intent":"investing","needs_team":true,"agents":["market-analyst"],"symbols":["Rocket Lab"]}';
+    if (isAgent(b)) { agentData = b.messages[1].content; return 'Report.\nCONFIDENCE: 0.7'; }
+    return 'Answer.\n---META---\n{"consensus":"medium"}';
+  }, fakeYahoo);
+  const out = await orchestrator.handle('is rocket lab a good long term buy?');
+  assert.match(agentData, /VERIFIED MARKET DATA[\s\S]*RKLB \(Rocket Lab Corporation\) - USD 37\.50 as of /);
+  assert.ok(out.meta.team.length === 1 && !out.meta.verified);
+});
+
+test('non-finance questions work too: the supervisor routes them to general helpers', async () => {
+  let planPrompt = '';
+  mockFetch((b) => {
+    if (b.messages[0].content.includes(PLAN)) { planPrompt = b.messages[0].content; return '{"intent":"coding","needs_team":true,"agents":["coding-assistant"]}'; }
+    if (isAgent(b)) return 'Use a for loop.\nCONFIDENCE: 0.9';
+    return 'Here is how to loop in Python.\n---META---\n{"consensus":"high"}';
+  });
+  const out = await orchestrator.handle('how do I write a loop in python?');
+  assert.match(planPrompt, /like Jarvis/);
+  assert.deepEqual(out.meta.team.map((t) => t.agent), ['Coding Assistant']);
+});

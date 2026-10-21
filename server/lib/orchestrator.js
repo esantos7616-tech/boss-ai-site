@@ -21,10 +21,11 @@ import { chatCompletion, PROVIDERS } from './providers.js';
 import { intEnv } from './env.js';
 
 const RULES = `Ground rules:
-- Never invent numbers, prices, dates, statistics, quotes, studies or tickers. Current figures may ONLY come from the VERIFIED MARKET DATA block. If you don't have a number, say so and say where to find it.
+- Never invent numbers, prices, dates, statistics, quotes, studies, tickers or sources. Current market figures may ONLY come from the VERIFIED MARKET DATA block. If you don't have a number, say so and say where to find it.
 - News and recent events may ONLY come from the WEB RESULTS block; cite them as [n]. If there are no web results, say you can't check the latest news.
 - Say "I'm not sure" rather than guess. Keep facts separate from opinions.
-- This is education, not personalized financial advice. Be honest about risk and never promise returns.
+- Money topics: this is education, not personalized financial advice. Be honest about risk and never promise returns.
+- Health, legal or safety topics: give general information and say when the user should see a professional.
 - Be practical and specific. Write plain text: short paragraphs and "-" bullets. No markdown headings, tables or bold.`;
 
 // ---------- parsing helpers (free models are sloppy with formats) ----------
@@ -114,12 +115,14 @@ function planMessages(text, convo, mem, k, maxNew) {
   const catalog = agents.catalog(text);
   return [
     { role: 'system', content:
-`You are BOSS, the supervisor of an AI team that helps one user learn to invest, trade smarter and build businesses. You were made supervisor because you hallucinate the least. In this step you only PLAN. You do not answer.
+`You are BOSS, the supervisor of an AI team that is one user's personal assistant, like Jarvis. The user can ask about anything: investing, trading and building businesses (their main goals), and also school, coding, writing, health and fitness, planning, and general knowledge. You were made supervisor because you hallucinate the least. In this step you only PLAN. You do not answer.
 
 ${catalog ? 'Specialist agents on your team (id: name [tags] - mission):\n' + catalog : 'Your team is EMPTY. You must hire the specialists this question needs using new_agents.'}
 
 Reply with ONLY a JSON object:
-{"intent":"trading|investing|business|learning|general|chat","needs_team":true,"agents":["agent-id"],"new_agents":[],"search":[],"direct_reply":""}
+{"intent":"quote|trading|investing|business|learning|coding|writing|health|general|chat","needs_team":true,"agents":["agent-id"],"new_agents":[],"search":[],"symbols":[],"direct_reply":""}
+- intent "quote" means the user only wants the current price or basic numbers for stocks, ETFs, indexes or crypto, with no analysis or advice.
+- symbols: every stock, ETF, index or crypto the user mentions. Use the ticker only if you are certain of it; otherwise write the company or asset name as the user wrote it (e.g. "Rocket Lab"). Never guess a ticker. [] if none.
 - agents: pick 1 to ${k} agents whose expertise fits best. For any buy/sell or money decision, include one agent whose job is risk or arguing the other side, hiring one if needed.
 - new_agents: up to ${maxNew} new specialists {"name","mission","tags"} when no agent on the team fits. Make each one a reusable specialist, not a one-off. Write the mission in second person ("You ...") and include how they should avoid mistakes. New agents automatically work on this question.
 - search: up to 2 web search queries if the question needs news, recent events, or facts that may have changed (company news, regulations, prices of products, current trends). Otherwise [].
@@ -201,12 +204,27 @@ export async function handle(message, history = [], opts = {}) {
     return { message: tidy(plan.direct_reply), meta: { interactionId, supervisor: brief(supervisor), intent, team: [], consensus: 'n/a' } };
   }
 
+  // Turn the company names / tickers the supervisor spotted into verified tickers.
+  const hints = (Array.isArray(plan?.symbols) ? plan.symbols : []).filter((h) => typeof h === 'string' && h.trim()).slice(0, 6);
+  const resolved = hints.length ? await market.resolve(hints) : { symbols: [], missing: [] };
+  symbols = [...new Set([...resolved.symbols, ...symbols])].slice(0, 10);
+
+  // Price-only questions are answered from the data by code: fast, free, exact.
+  if (intent === 'quote' && !opts.forceTeam && (resolved.symbols.length || resolved.missing.length)) {
+    const ctx = await market.contextFor(resolved.symbols);
+    const interactionId = learning.logInteraction({ question: text.slice(0, 300), supervisor: supervisor.id, intent, used: [] });
+    return {
+      message: market.priceAnswer(ctx.quotes, [...resolved.missing, ...ctx.failed]),
+      meta: { interactionId, supervisor: brief(supervisor), intent, team: [], consensus: 'n/a', verified: ctx.quotes.length > 0, market: ctx.symbols },
+    };
+  }
+
   const queries = (Array.isArray(plan?.search) ? plan.search : []).filter((q) => typeof q === 'string' && q.trim()).slice(0, 2);
   const newsQueries = [...(opts.newsQueries || [])];
   if (/trad|invest/.test(intent)) for (const s of symbols.slice(0, 2)) newsQueries.push(`${s} stock`);
   const webPromise = search.contextFor({ queries, newsQueries });
 
-  let marketCtx = await marketPromise;
+  let marketCtx = hints.length ? await market.contextFor(symbols) : await marketPromise;
   if (!symbols.length && /trad|invest/.test(intent)) {
     symbols = ['SPY', 'QQQ'];
     marketCtx = await market.contextFor(symbols);

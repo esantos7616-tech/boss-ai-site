@@ -589,6 +589,13 @@ textarea#composer::placeholder{color:var(--text-dim);}
     info.className = 'meta-info';
     const team = meta.team || [];
     info.textContent = 'Supervisor ' + meta.supervisor.id + (team.length ? ' · ' + team.length + ' agent' + (team.length === 1 ? '' : 's') : '');
+    if (meta.verified) {
+      info.textContent = 'Live market data';
+      const v = document.createElement('span');
+      v.className = 'consensus-high';
+      v.textContent = ' · numbers straight from the source, no AI';
+      info.appendChild(v);
+    }
     if (meta.consensus && meta.consensus !== 'unknown' && meta.consensus !== 'n/a') {
       const c = document.createElement('span');
       c.className = 'consensus-' + meta.consensus;

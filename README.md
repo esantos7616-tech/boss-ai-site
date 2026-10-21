@@ -37,6 +37,10 @@ You ──► SUPERVISOR (the model with the lowest measured hallucination rate)
 - Long-term memory: Boss remembers your goals, budget and risk tolerance, plus lessons from answers you rated 👎.
 - Rate-limited or retired models are benched automatically, and the next-best model takes over.
 
+**Ask about anything.** Investing and business are Boss's focus, but it's a general assistant. There are starter agents for research and school, writing, coding, and health and fitness, and the supervisor hires specialists for any other topic.
+
+**Exact prices for any stock.** Ask "what's Rocket Lab at?", "price of costco and bitcoin", or "$NVDA". Boss turns the name into a real ticker through Yahoo Finance's symbol search, so the AI never guesses a ticker. When you only want the price, the answer is built from the live data by code: price, change versus the previous close, day range, 52-week range, and the exact time and exchange of the quote. No AI touches the numbers. Free data can trail the live market by a few minutes, so check your broker before trading.
+
 **Jarvis features**
 - **Daily briefing:** every morning at `BRIEFING_TIME`, the team prepares a market recap, your watchlist moves with headlines, one business task for the day, and one thing to learn. It's waiting when you open the site, and it's read aloud if voice replies are on. Tap ☀️ to get one any time.
 - **Live web search:** the supervisor decides when a question needs current information and searches the web and news. Answers cite their sources as [1], [2], and the sources are clickable. This works with no key; a free Tavily or Brave key gives better results.
