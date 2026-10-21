@@ -126,3 +126,90 @@ test('if the supervisor cannot synthesize, the best report is returned and label
   assert.ok(synthCalls >= 1);
   assert.match(out.message, /not been cross-checked/);
 });
+
+test('empty team: the supervisor hires specialists from scratch', async () => {
+  process.env.STARTER_AGENTS = '0';
+  mockFetch((b) => {
+    const sys = b.messages[0].content;
+    if (sys.includes(PLAN)) {
+      assert.match(sys, /Your team is EMPTY/);
+      return JSON.stringify({ intent: 'business', needs_team: true, agents: [], new_agents: [
+        { name: 'Lawn Care Advisor', mission: 'You help people start local service businesses like lawn care.', tags: ['lawn', 'service'] },
+        { name: 'Pricing Coach', mission: 'You set prices for small service businesses using real costs.', tags: ['pricing'] },
+      ] });
+    }
+    if (isAgent(b)) return 'Charge per lawn, not per hour.\nCONFIDENCE: 0.7';
+    return 'Start with 5 neighbors.\n---META---\n{"consensus":"medium"}';
+  });
+  const out = await orchestrator.handle('How do I start a lawn care business?');
+  assert.deepEqual(out.meta.spawned, ['Lawn Care Advisor', 'Pricing Coach']);
+  assert.deepEqual(out.meta.team.map((t) => t.agent).sort(), ['Lawn Care Advisor', 'Pricing Coach']);
+  assert.equal(agents.list().length, 2);
+});
+
+test('empty team and an unusable plan still gets an answer from a generalist', async () => {
+  process.env.STARTER_AGENTS = '0';
+  mockFetch((b) => (isAgent(b) ? 'Here is a direct answer.\nCONFIDENCE: 0.5' : b.messages[0].content.includes(PLAN) ? 'no' : 'Final.'));
+  const out = await orchestrator.handle('What is a P/E ratio?');
+  assert.equal(out.meta.team[0].agent, 'Generalist');
+});
+
+test('web search results reach the agents and come back as sources', async () => {
+  process.env.WEB_SEARCH = '1';
+  let agentSawWeb = false;
+  mockFetch((b) => {
+    if (b.messages[0].content.includes(PLAN)) return '{"intent":"general","needs_team":true,"agents":["macro"],"search":["fed rate decision"]}';
+    if (isAgent(b)) {
+      agentSawWeb = b.messages[1].content.includes('WEB RESULTS') && b.messages[1].content.includes('Fed holds rates');
+      return 'The Fed held rates [1].\nCONFIDENCE: 0.8';
+    }
+    return 'The Fed held rates steady [1].\n---META---\n{"consensus":"high"}';
+  }, (url) => (url.includes('duckduckgo')
+    ? '<div class="result"><a class="result__a" href="https://example.com/fed">Fed holds rates</a><a class="result__snippet">Rates unchanged.</a></div>'
+    : { status: 404 }));
+  const out = await orchestrator.handle('What did the Fed just do?');
+  assert.ok(agentSawWeb);
+  assert.deepEqual(out.meta.sources, [{ n: 1, title: 'Fed holds rates', url: 'https://example.com/fed' }]);
+});
+
+test('supervisor rewrites weak agents and edits the watchlist on request', async () => {
+  mockFetch((b) => {
+    if (b.messages[0].content.includes(PLAN)) return '{"intent":"investing","needs_team":true,"agents":["technicals","fundamentals"]}';
+    if (isAgent(b)) return 'Report.\nCONFIDENCE: 0.5';
+    return 'Added NVDA to your watchlist.\n---META---\n' + JSON.stringify({
+      consensus: 'medium', agent_scores: { technicals: 0.2, fundamentals: 0.9 },
+      improve_agents: [
+        { id: 'technicals', mission: 'You read trend and momentum and ALWAYS give an invalidation level.' },
+        { id: 'fundamentals', mission: 'This one scored well, so it must not be rewritten.' },
+      ],
+      watchlist_add: ['nvda'],
+    });
+  });
+  const out = await orchestrator.handle('add NVDA to my watchlist and tell me about it');
+  assert.deepEqual(out.meta.improved, ['Technical Analyst']);
+  assert.match(agents.get('technicals').mission, /invalidation level/);
+  assert.doesNotMatch(agents.get('fundamentals').mission, /must not be rewritten/);
+  assert.deepEqual(out.meta.watchlist, ['NVDA']);
+});
+
+test('daily briefing runs the full team and is stored', async () => {
+  const briefing = await import('../lib/briefing.js');
+  const watchlist = await import('../lib/watchlist.js');
+  watchlist.add(['AAPL']);
+  let briefingPrompt = '';
+  mockFetch((b) => {
+    if (b.messages[0].content.includes(PLAN)) {
+      briefingPrompt = b.messages[1].content;
+      return '{"intent":"chat","needs_team":false,"direct_reply":"hi"}'; // forceTeam must ignore this
+    }
+    if (isAgent(b)) return 'Markets were mixed.\nCONFIDENCE: 0.6';
+    return 'Market: mixed.\nWatchlist: AAPL flat.\nTask: call 3 customers.\nLearn: P/E ratio.\n---META---\n{"consensus":"medium"}';
+  });
+  const item = await briefing.generate();
+  assert.match(briefingPrompt, /daily briefing/);
+  assert.match(briefingPrompt, /AAPL/);
+  assert.match(item.message, /Task: call 3 customers/);
+  assert.match(item.meta.label, /^Briefing · /);
+  assert.ok(item.meta.team.length >= 1);
+  assert.equal(briefing.latest().id, item.id);
+});

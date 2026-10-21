@@ -11,6 +11,9 @@ const learning = await import('../lib/learning.js');
 const agents = await import('../lib/agents.js');
 const { QUESTIONS, grade } = await import('../lib/benchmark.js');
 const { stripThinking } = await import('../lib/providers.js');
+const search = await import('../lib/search.js');
+const watchlist = await import('../lib/watchlist.js');
+const briefing = await import('../lib/briefing.js');
 
 beforeEach(() => { store._reset(); freshEnv(); });
 
@@ -90,7 +93,29 @@ test('agents: validation, dedupe, and pruning of bad spawned agents', () => {
   assert.equal(agents.get(a.id), null);
   for (let i = 0; i < 9; i++) learning.reward('agents', 'risk-manager', 0);
   agents.prune();
-  assert.ok(agents.get('risk-manager'), 'seed agents are never retired');
+  assert.equal(agents.get('risk-manager'), null, 'starter agents are retired like any other');
+  // ...and do not come back after a restart.
+  store.flush();
+  store._reset();
+  assert.equal(agents.get('risk-manager'), null);
+  assert.ok(agents.get('market-analyst'));
+});
+
+test('agents: starters are optional and come from the editable seed file', () => {
+  process.env.STARTER_AGENTS = '0';
+  assert.equal(agents.list().length, 0);
+  store._reset();
+  delete process.env.STARTER_AGENTS;
+  assert.equal(agents.list().length, 12);
+});
+
+test('agents: the supervisor can rewrite a weak agent and its record gets a fresh trial', () => {
+  for (let i = 0; i < 6; i++) learning.reward('agents', 'macro', 0);
+  assert.equal(agents.improve('macro', 'short', 'x'), false);
+  assert.equal(agents.improve('macro', 'You explain how rates and inflation move markets, with the mechanism first.', 'sup'), true);
+  assert.match(agents.get('macro').mission, /mechanism first/);
+  assert.equal(agents.get('macro').history.length, 1);
+  assert.equal(learning.stats('agents', 'macro').losses, 3);
 });
 
 test('thompson sampling favors proven models', () => {
@@ -98,4 +123,32 @@ test('thompson sampling favors proven models', () => {
   let goodWins = 0;
   for (let i = 0; i < 200; i++) if (learning.sampleScore('models', 'good') > learning.sampleScore('models', 'bad')) goodWins++;
   assert.ok(goodWins > 190);
+});
+
+test('web search: parses DuckDuckGo HTML results and unwraps redirect links', () => {
+  const html = `<div class="result results_links web-result"><div class="links_main">
+    <h2 class="result__title"><a rel="nofollow" class="result__a" href="//duckduckgo.com/l/?uddg=https%3A%2F%2Fexample.com%2Fa%3Fx%3D1&amp;rut=abc">Example &amp; Co <b>news</b></a></h2>
+    <a class="result__snippet" href="x">Fed holds <b>rates</b> steady</a></div></div>
+    <div class="result results_links"><a class="result__a" href="https://duckduckgo.com/y.js?ad=1">Ad</a></div>`;
+  assert.deepEqual(search.parseDuck(html), [{ title: 'Example & Co news', url: 'https://example.com/a?x=1', snippet: 'Fed holds rates steady' }]);
+});
+
+test('web search: parses Google News RSS', () => {
+  const xml = '<rss><channel><item><title>Nvidia beats estimates - Reuters</title><link>https://news.google.com/x</link>' +
+    '<pubDate>Tue, 20 Oct 2026 12:00:00 GMT</pubDate><source url="https://reuters.com">Reuters</source></item></channel></rss>';
+  assert.deepEqual(search.parseRss(xml), [{ title: 'Nvidia beats estimates - Reuters', url: 'https://news.google.com/x', date: 'Tue, 20 Oct 2026 12:00:00 GMT', source: 'Reuters' }]);
+});
+
+test('watchlist: validates, dedupes and caps tickers', () => {
+  assert.deepEqual(watchlist.add(['nvda', '$TSLA', 'NVDA', 'not a ticker', 'BRK-B']), ['NVDA', 'TSLA', 'BRK-B']);
+  assert.deepEqual(watchlist.remove(['tsla']), ['NVDA', 'BRK-B']);
+});
+
+test('briefing: schedule respects BRIEFING_TIME and runs once a day', () => {
+  process.env.BRIEFING_TIME = '07:30';
+  const d = (h, m) => { const x = new Date(); x.setHours(h, m, 0, 0); return x; };
+  assert.equal(briefing.isDue(d(7, 29)), false);
+  assert.equal(briefing.isDue(d(7, 30)), true);
+  process.env.BRIEFING_TIME = 'off';
+  assert.equal(briefing.isDue(d(9, 0)), false);
 });

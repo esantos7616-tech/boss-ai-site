@@ -373,6 +373,26 @@ textarea#composer::placeholder{color:var(--text-dim);}
   white-space:pre-wrap;
 }
 .meta-details.open{display:block;}
+.meta-details a{color:var(--blue);text-decoration:none;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.meta-details a:hover{text-decoration:underline;}
+.msg.boss.briefing{border-color:rgba(91,142,255,0.45);}
+.chips{display:flex;flex-wrap:wrap;gap:6px;}
+.chip{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:5px 6px 5px 10px;border-radius:999px;border:1px solid var(--line);background:var(--card);
+  font-family:'IBM Plex Mono',monospace;font-size:12px;
+}
+.chip button,.team-item .x{
+  background:none;border:none;color:var(--text-dim);cursor:pointer;padding:0 4px;font-size:14px;line-height:1;
+}
+.chip button:hover,.team-item .x:hover{color:var(--red);}
+.add-row{display:flex;gap:6px;margin-top:8px;}
+.add-row input{
+  flex:1;min-width:0;background:var(--card);border:1px solid var(--line);border-radius:8px;color:var(--text);
+  font-family:'IBM Plex Mono',monospace;font-size:13px;padding:8px 10px;outline:none;text-transform:uppercase;
+}
+.add-row input:focus{border-color:var(--blue);}
+.add-row .btn{flex:0 0 auto;}
 
 /* ---- Team drawer ---- */
 .topbar-actions{display:flex;gap:8px;}
@@ -409,6 +429,9 @@ textarea#composer::placeholder{color:var(--text-dim);}
     </div>
   </div>
   <div class="topbar-actions">
+  <button class="gear-btn" id="briefing-btn" aria-label="Daily briefing" title="Daily briefing">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"></path></svg>
+  </button>
   <button class="gear-btn" id="open-team" aria-label="Team">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 00-3-3.87"></path><path d="M16 3.13a4 4 0 010 7.75"></path></svg>
   </button>
@@ -424,7 +447,7 @@ textarea#composer::placeholder{color:var(--text-dim);}
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="24" height="24"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"></path><path d="M19 10v2a7 7 0 01-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
     </div>
     <h2>Talk to Boss</h2>
-    <p>Type or tap the mic. Boss runs a team of 30 free LLMs: a supervisor picks specialist agents, they work in parallel, and the supervisor fact-checks them before answering.</p>
+    <p>Type or tap the mic. Boss runs a team of 30 free LLMs: a supervisor hires specialist agents, they research in parallel with live market data and web search, and the supervisor fact-checks them before answering. Tap the sun for your daily briefing.</p>
   </div>
 </div>
 
@@ -579,8 +602,16 @@ textarea#composer::placeholder{color:var(--text-dim);}
     const lines = team.map(t => '- ' + t.agent + ' on ' + t.model + (t.confidence != null ? ' (' + Math.round(t.confidence * 100) + '% sure)' : ''));
     if (meta.spawned && meta.spawned.length) lines.push('New agent' + (meta.spawned.length > 1 ? 's' : '') + ' created: ' + meta.spawned.join(', '));
     if (meta.market && meta.market.length) lines.push('Live data used: ' + meta.market.join(', '));
+    if (meta.improved && meta.improved.length) lines.push('Supervisor rewrote instructions for: ' + meta.improved.join(', '));
     if (meta.failed) lines.push(meta.failed + ' agent(s) could not answer (rate limits)');
+    if (meta.sources && meta.sources.length) lines.push('Sources:');
     details.textContent = lines.join('\n');
+    (meta.sources || []).forEach(src => {
+      const a = document.createElement('a');
+      a.href = src.url; a.target = '_blank'; a.rel = 'noopener noreferrer';
+      a.textContent = '[' + src.n + '] ' + src.title;
+      details.appendChild(a);
+    });
     info.addEventListener('click', () => details.classList.toggle('open'));
 
     if (meta.interactionId) {
@@ -618,7 +649,8 @@ textarea#composer::placeholder{color:var(--text-dim);}
     if (role === 'boss') {
       const label = document.createElement('span');
       label.className = 'label';
-      label.textContent = 'BOSS';
+      label.textContent = (meta && meta.label) || 'BOSS';
+      if (meta && meta.label) div.classList.add('briefing');
       div.appendChild(label);
       const body = document.createElement('span');
       body.textContent = text;
@@ -691,7 +723,8 @@ textarea#composer::placeholder{color:var(--text-dim);}
       setConn('bad'); return false;
     }
   }
-  if (backendUrl) checkConnection(true);
+  if (backendUrl) checkConnection(true).then(ok => { if (ok) checkBriefing(); });
+  setInterval(checkBriefing, 15 * 60 * 1000);
 
   // ---- Settings drawer ----
   function openDrawer(){ overlay.classList.add('open'); drawer.classList.add('open'); }
@@ -724,6 +757,57 @@ textarea#composer::placeholder{color:var(--text-dim);}
   }
   const pct = (x) => Math.round(x * 100) + '%';
 
+  async function editWatchlist(change){
+    try { await api('/api/watchlist', {method:'POST', body: JSON.stringify(change)}); } catch(e){}
+    loadTeam();
+  }
+
+  const BRIEFING_SEEN_KEY = 'boss_ai_briefing_seen';
+  function showBriefing(b){
+    if (!b || !b.message) return;
+    const meta = Object.assign({}, b.meta || {}, {label: (b.meta && b.meta.label) || 'Briefing'});
+    addBubble('boss', b.message, true, meta.supervisor ? meta : null);
+    if (!meta.supervisor) chat.lastChild.querySelector('.label').textContent = meta.label;
+    history.push({role:'assistant', content:b.message, meta: meta.supervisor ? meta : null});
+    saveHistory();
+    safeSet(BRIEFING_SEEN_KEY, b.id);
+    if (voiceOut) speak(b.message);
+  }
+
+  async function checkBriefing(){
+    if (!backendUrl) return;
+    try {
+      const res = await api('/api/briefing/latest', {method:'GET'});
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data.briefing && data.briefing.id !== safeGet(BRIEFING_SEEN_KEY)) showBriefing(data.briefing);
+    } catch(e){}
+  }
+
+  let briefingBusy = false;
+  async function requestBriefing(){
+    if (!backendUrl) { openDrawer(); return; }
+    if (briefingBusy) return;
+    briefingBusy = true;
+    addTyping();
+    modeHint.textContent = 'Team is preparing your briefing…';
+    try {
+      const res = await api('/api/briefing', {method:'POST'});
+      removeTyping();
+      if (res.status === 401) { addBubble('error', 'Boss needs your access key. Add it in Settings.'); openDrawer(); return; }
+      const data = await res.json();
+      if (data.briefing) showBriefing(data.briefing);
+      else addBubble('error', data.error || "Couldn't make a briefing right now.");
+    } catch(e){
+      removeTyping();
+      addBubble('error', "Couldn't reach Boss for the briefing.");
+    } finally {
+      briefingBusy = false;
+      modeHint.textContent = 'Text mode';
+    }
+  }
+  document.getElementById('briefing-btn').addEventListener('click', requestBriefing);
+
   async function loadTeam(){
     if (!backendUrl) { teamBody.textContent = 'Set your backend address in Settings first.'; return; }
     teamBody.textContent = 'Loading…';
@@ -739,6 +823,36 @@ textarea#composer::placeholder{color:var(--text-dim);}
     teamBody.innerHTML = '';
     const live = t.models.filter(m => m.available).length;
     teamBody.appendChild(el('div', null, live + ' of ' + t.models.length + ' models online · ' + t.agents.length + ' agents (' + t.agents.filter(a => !a.seed).length + ' created by the team)'));
+
+    teamBody.appendChild(el('div', 'section-title', 'Watchlist'));
+    const chips = el('div', 'chips');
+    if (!t.watchlist.length) chips.appendChild(el('div', 'team-summary', 'Empty. Add tickers here, or tell Boss "add NVDA to my watchlist".'));
+    t.watchlist.forEach(sym => {
+      const c = el('span', 'chip', sym);
+      const x = el('button', null, '×');
+      x.setAttribute('aria-label', 'Remove ' + sym);
+      x.addEventListener('click', () => editWatchlist({remove: [sym]}));
+      c.appendChild(x);
+      chips.appendChild(c);
+    });
+    teamBody.appendChild(chips);
+    const addRow = el('div', 'add-row');
+    const addInput = el('input');
+    addInput.placeholder = 'Ticker, e.g. AAPL';
+    addInput.maxLength = 12;
+    const addBtn = el('button', 'btn', 'Add');
+    const doAdd = () => { const v = addInput.value.trim(); if (v) editWatchlist({add: v.split(/[\s,]+/)}); };
+    addBtn.addEventListener('click', doAdd);
+    addInput.addEventListener('keydown', e => { if (e.key === 'Enter') doAdd(); });
+    addRow.appendChild(addInput); addRow.appendChild(addBtn);
+    teamBody.appendChild(addRow);
+
+    teamBody.appendChild(el('div', 'section-title', 'Daily briefing & web search'));
+    teamBody.appendChild(el('div', 'team-summary', 'Briefing: ' + (t.briefingTime === 'off' ? 'off' : 'every day at ' + t.briefingTime + ' (Pi time)') + ' · Web search: ' + t.webSearch));
+    const runNow = el('button', 'btn', 'Get my briefing now');
+    runNow.style.marginTop = '8px';
+    runNow.addEventListener('click', () => { closeDrawer(); requestBriefing(); });
+    teamBody.appendChild(runNow);
 
     teamBody.appendChild(el('div', 'section-title', 'Free providers'));
     const prov = el('div', 'team-list');
@@ -759,10 +873,22 @@ textarea#composer::placeholder{color:var(--text-dim);}
 
     teamBody.appendChild(el('div', 'section-title', 'Agents (score · ratings)'));
     const ag = el('div', 'team-list');
+    if (!t.agents.length) ag.appendChild(el('div', 'team-summary', 'No agents yet. The supervisor hires them as you ask questions.'));
     t.agents
       .slice()
       .sort((a, b) => b.score - a.score)
-      .forEach(a => ag.appendChild(item(a.name + (a.seed ? '' : ' (new)'), pct(a.score) + ' · ' + a.ratings, {ok: true})));
+      .forEach(a => {
+        const row = item(a.name + (a.seed ? '' : ' (hired by team)'), pct(a.score) + ' · ' + a.ratings, {ok: true});
+        const x = el('button', 'x', '×');
+        x.setAttribute('aria-label', 'Retire ' + a.name);
+        x.addEventListener('click', async () => {
+          if (!window.confirm('Retire the ' + a.name + ' agent?')) return;
+          try { await api('/api/agents/' + encodeURIComponent(a.id), {method:'DELETE'}); } catch(e){}
+          loadTeam();
+        });
+        row.appendChild(x);
+        ag.appendChild(row);
+      });
     teamBody.appendChild(ag);
 
     teamBody.appendChild(el('div', 'section-title', 'What Boss remembers about you'));

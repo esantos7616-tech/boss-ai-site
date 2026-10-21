@@ -28,7 +28,7 @@ You ──► SUPERVISOR (the model with the lowest measured hallucination rate)
 **The 30 models** (`server/models.json`) span 8 free providers and 11 model families: Gemini, Llama, GPT-OSS, Qwen, Kimi, Mistral, DeepSeek, Gemma, GLM, GPT-4.1/4o-mini, Phi, plus 2 offline models. Using different families matters because models from different labs make different mistakes, so cross-checking them catches more errors.
 
 **Self-expanding**
-- Worker models propose new specialist agents while they work. The supervisor approves only the useful ones. Each new agent is "owned" by the model that proposed it. There are 12 seed agents and a cap of 150.
+- Worker models propose new specialist agents while they work. The supervisor approves only the useful ones. Each new agent is "owned" by the model that proposed it. It starts with 12 optional starter agents, and the team is capped at 150.
 - New free models published on OpenRouter are discovered automatically and join the worker pool.
 
 **Adaptive learning**
@@ -36,6 +36,12 @@ You ──► SUPERVISOR (the model with the lowest measured hallucination rate)
 - Spawned agents with consistently bad ratings are retired automatically.
 - Long-term memory: Boss remembers your goals, budget and risk tolerance, plus lessons from answers you rated 👎.
 - Rate-limited or retired models are benched automatically, and the next-best model takes over.
+
+**Jarvis features**
+- **Daily briefing:** every morning at `BRIEFING_TIME`, the team prepares a market recap, your watchlist moves with headlines, one business task for the day, and one thing to learn. It's waiting when you open the site, and it's read aloud if voice replies are on. Tap ☀️ to get one any time.
+- **Live web search:** the supervisor decides when a question needs current information and searches the web and news. Answers cite their sources as [1], [2], and the sources are clickable. This works with no key; a free Tavily or Brave key gives better results.
+- **Watchlist by voice or text:** say "add NVDA to my watchlist", or manage it in the 👥 Team panel.
+- **Nothing about the team is fixed:** starter agents are optional (`STARTER_AGENTS=0` starts empty, and the supervisor hires everyone). They're editable in `server/agents.seed.json`. The supervisor rewrites the instructions of agents that do badly, and any agent, including starters, is retired if its record stays poor. You can also retire agents yourself in the Team panel.
 
 **Least-hallucination supervisor.** `npm run benchmark` asks every model 12 questions. Half have one checkable answer. The other half are traps (fake companies, future dates, false premises) where the only honest answer is "that doesn't exist" or "I don't know". The model with the lowest measured error rate becomes the supervisor. Until you run the benchmark, a sensible default is used (Gemini 2.5 Flash).
 
@@ -79,6 +85,10 @@ Run the tests with `cd server && npm test`.
 | GET | `/api/health` | Connection status (no key needed) |
 | POST | `/api/benchmark` | Re-run the hallucination benchmark in the background |
 | POST | `/api/memory/forget` | Erase long-term memory |
+| GET | `/api/briefing/latest` | Latest daily briefing |
+| POST | `/api/briefing` | Make a briefing now |
+| GET/POST | `/api/watchlist` | Read, or `{add:[...], remove:[...]}` |
+| DELETE | `/api/agents/:id` | Retire an agent |
 
 All endpoints except `/api/health` require the `X-Boss-Key` header when `BOSS_ACCESS_KEY` is set.
 

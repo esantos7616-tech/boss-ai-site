@@ -40,6 +40,14 @@ export function reward(kind, id, value, weight = 1) {
   save(FILE);
 }
 
+// Shrink a record toward "unknown" so a changed agent gets a fresh trial.
+export function soften(kind, id, factor) {
+  const r = rec(kind, id);
+  r.wins *= factor;
+  r.losses *= factor;
+  save(FILE);
+}
+
 export function meanScore(kind, id) {
   const r = rec(kind, id);
   return (r.wins + 1) / (r.wins + r.losses + 2);

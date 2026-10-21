@@ -8,12 +8,23 @@ export function freshEnv() {
   process.env.BOSS_DATA_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'boss-test-'));
   process.env.AUTO_DISCOVER = '0';
   process.env.MARKET_DATA = '0';
+  process.env.WEB_SEARCH = '0';
+  process.env.BRIEFING_TIME = 'off';
+  delete process.env.STARTER_AGENTS;
+  delete process.env.TAVILY_API_KEY;
+  delete process.env.BRAVE_API_KEY;
 }
 
 // Fake OpenAI-compatible endpoint: `responder(body, url)` returns the reply text.
-export function mockFetch(responder) {
+// Non-LLM requests (web search, news) go to `web(url)`, which returns raw text.
+export function mockFetch(responder, web = () => ({ status: 404 })) {
   const calls = [];
-  globalThis.fetch = async (url, init) => {
+  globalThis.fetch = async (url, init = {}) => {
+    if (!String(url).endsWith('/chat/completions')) {
+      const out = await web(String(url));
+      if (out && out.status) return new Response(out.text || '', { status: out.status });
+      return new Response(out, { status: 200 });
+    }
     const body = JSON.parse(init.body);
     calls.push({ url: String(url), body });
     const out = await responder(body, String(url));

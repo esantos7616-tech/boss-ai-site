@@ -16,6 +16,8 @@ const agents = await import('./lib/agents.js');
 const learning = await import('./lib/learning.js');
 const orchestrator = await import('./lib/orchestrator.js');
 const { benchmarkAll } = await import('./lib/benchmark.js');
+const briefing = await import('./lib/briefing.js');
+const watchlist = await import('./lib/watchlist.js');
 const { PROVIDERS, providerReady } = await import('./lib/providers.js');
 const store = await import('./lib/store.js');
 
@@ -28,7 +30,7 @@ function cors(req, res) {
   const origin = req.headers.origin;
   if (ORIGINS.includes('*')) res.setHeader('Access-Control-Allow-Origin', '*');
   else if (origin && ORIGINS.includes(origin)) { res.setHeader('Access-Control-Allow-Origin', origin); res.setHeader('Vary', 'Origin'); }
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-Boss-Key');
 }
 
@@ -83,6 +85,9 @@ function teamSnapshot() {
       score: +learning.meanScore('agents', a.id).toFixed(3), ratings: +learning.ratings('agents', a.id).toFixed(1),
     })),
     memory: learning.memory(),
+    watchlist: watchlist.list(),
+    briefingTime: briefing.briefingTime()?.label || 'off',
+    webSearch: process.env.WEB_SEARCH === '0' ? 'off' : process.env.TAVILY_API_KEY ? 'Tavily' : process.env.BRAVE_API_KEY ? 'Brave' : 'DuckDuckGo + Google News',
   };
 }
 
@@ -125,6 +130,28 @@ const server = http.createServer(async (req, res) => {
 
     if (req.method === 'GET' && url.pathname === '/api/team') return send(res, 200, teamSnapshot());
 
+    if (req.method === 'GET' && url.pathname === '/api/briefing/latest') {
+      return send(res, 200, { briefing: briefing.latest(), running: briefing.isRunning() });
+    }
+
+    if (req.method === 'POST' && url.pathname === '/api/briefing') {
+      if (!registry.available().length) return send(res, 200, { briefing: null, error: 'No models available yet. Add free API keys first.' });
+      return send(res, 200, { briefing: await briefing.generate() });
+    }
+
+    if (req.method === 'GET' && url.pathname === '/api/watchlist') return send(res, 200, { symbols: watchlist.list() });
+
+    if (req.method === 'POST' && url.pathname === '/api/watchlist') {
+      const body = await readJson(req);
+      if (body.add) watchlist.add(body.add);
+      if (body.remove) watchlist.remove(body.remove);
+      return send(res, 200, { symbols: watchlist.list() });
+    }
+
+    if (req.method === 'DELETE' && url.pathname.startsWith('/api/agents/')) {
+      return send(res, 200, { ok: agents.retire(decodeURIComponent(url.pathname.slice('/api/agents/'.length))) });
+    }
+
     if (req.method === 'POST' && url.pathname === '/api/memory/forget') {
       learning.forget();
       return send(res, 200, { ok: true });
@@ -152,6 +179,9 @@ server.listen(PORT, async () => {
   console.log(`Providers connected: ${ready.join(', ') || 'none (add free keys to server/.env)'}`);
   await registry.discover();
   console.log(`Models available: ${registry.available().length}/${registry.allModels().length}, supervisor: ${registry.pickSupervisor()?.id || 'none'}`);
+  briefing.startScheduler();
+  const bt = briefing.briefingTime();
+  console.log(`Daily briefing: ${bt ? bt.label + ' (local time)' : 'off'}`);
   if (!ACCESS_KEY) console.warn('Warning: BOSS_ACCESS_KEY is not set, so anyone with your tunnel URL can use your quotas.');
 });
 
