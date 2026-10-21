@@ -1,0 +1,15 @@
+{
+  "name": "boss-ai-server",
+  "version": "1.0.0",
+  "description": "Boss AI backend: a supervisor LLM coordinating a team of 30 free LLMs and self-spawning specialist agents.",
+  "type": "module",
+  "main": "index.js",
+  "engines": { "node": ">=18.17" },
+  "scripts": {
+    "start": "node index.js",
+    "benchmark": "node scripts/benchmark.js",
+    "test": "node --test test/*.test.js"
+  },
+  "license": "UNLICENSED",
+  "private": true
+}

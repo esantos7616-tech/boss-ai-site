@@ -1,0 +1,42 @@
+{
+  "_comment": "The core roster of 30 free LLMs. Every provider here has a free tier (or runs locally). Model IDs change over time: a model that starts returning 404 is benched automatically, and new free models are auto-discovered from OpenRouter. supervisorRank is the starting guess for which model should supervise (1 = first choice). Once `npm run benchmark` has measured hallucination rates, measured numbers replace these guesses.",
+  "models": [
+    { "id": "gemini-2.5-flash",        "provider": "gemini",     "model": "gemini-2.5-flash",                          "family": "Gemini",   "strengths": ["reasoning", "finance", "general"], "supervisorRank": 1 },
+    { "id": "gemini-2.0-flash",        "provider": "gemini",     "model": "gemini-2.0-flash",                          "family": "Gemini",   "strengths": ["factual", "summaries"],          "supervisorRank": 2 },
+    { "id": "gemini-2.5-flash-lite",   "provider": "gemini",     "model": "gemini-2.5-flash-lite",                     "family": "Gemini",   "strengths": ["fast", "general"],               "supervisorRank": 6 },
+
+    { "id": "groq-llama-3.3-70b",      "provider": "groq",       "model": "llama-3.3-70b-versatile",                   "family": "Llama",    "strengths": ["general", "business"],           "supervisorRank": 5 },
+    { "id": "groq-llama-3.1-8b",       "provider": "groq",       "model": "llama-3.1-8b-instant",                      "family": "Llama",    "strengths": ["fast"] },
+    { "id": "groq-gpt-oss-120b",       "provider": "groq",       "model": "openai/gpt-oss-120b",                       "family": "GPT-OSS",  "strengths": ["reasoning", "math", "finance"],  "supervisorRank": 4, "maxTokens": 2000 },
+    { "id": "groq-gpt-oss-20b",        "provider": "groq",       "model": "openai/gpt-oss-20b",                        "family": "GPT-OSS",  "strengths": ["reasoning", "fast"],             "maxTokens": 2000 },
+    { "id": "groq-qwen3-32b",          "provider": "groq",       "model": "qwen/qwen3-32b",                            "family": "Qwen",     "strengths": ["reasoning", "math"],             "maxTokens": 2000 },
+    { "id": "groq-kimi-k2",            "provider": "groq",       "model": "moonshotai/kimi-k2-instruct",               "family": "Kimi",     "strengths": ["business", "writing"] },
+    { "id": "groq-llama-4-scout",      "provider": "groq",       "model": "meta-llama/llama-4-scout-17b-16e-instruct", "family": "Llama",    "strengths": ["general"] },
+
+    { "id": "cerebras-qwen3-235b",     "provider": "cerebras",   "model": "qwen-3-235b-a22b-instruct-2507",            "family": "Qwen",     "strengths": ["reasoning", "finance"] },
+    { "id": "cerebras-llama-3.3-70b",  "provider": "cerebras",   "model": "llama-3.3-70b",                             "family": "Llama",    "strengths": ["fast", "general"] },
+
+    { "id": "mistral-large",           "provider": "mistral",    "model": "mistral-large-latest",                      "family": "Mistral",  "strengths": ["reasoning", "business"],         "supervisorRank": 7 },
+    { "id": "mistral-medium",          "provider": "mistral",    "model": "mistral-medium-latest",                     "family": "Mistral",  "strengths": ["general", "writing"] },
+    { "id": "mistral-small",           "provider": "mistral",    "model": "mistral-small-latest",                      "family": "Mistral",  "strengths": ["fast"] },
+
+    { "id": "or-deepseek-v3",          "provider": "openrouter", "model": "deepseek/deepseek-chat-v3-0324:free",       "family": "DeepSeek", "strengths": ["finance", "reasoning", "business"] },
+    { "id": "or-deepseek-r1",          "provider": "openrouter", "model": "deepseek/deepseek-r1-0528:free",            "family": "DeepSeek", "strengths": ["reasoning", "math"],             "maxTokens": 3000 },
+    { "id": "or-qwen3-235b",           "provider": "openrouter", "model": "qwen/qwen3-235b-a22b:free",                 "family": "Qwen",     "strengths": ["reasoning"],                     "maxTokens": 2000 },
+    { "id": "or-gemma-3-27b",          "provider": "openrouter", "model": "google/gemma-3-27b-it:free",                "family": "Gemma",    "strengths": ["general"] },
+    { "id": "or-glm-4.5-air",          "provider": "openrouter", "model": "z-ai/glm-4.5-air:free",                     "family": "GLM",      "strengths": ["business", "writing"] },
+    { "id": "or-llama-3.3-70b",        "provider": "openrouter", "model": "meta-llama/llama-3.3-70b-instruct:free",    "family": "Llama",    "strengths": ["general"] },
+    { "id": "or-mistral-small-3.2",    "provider": "openrouter", "model": "mistralai/mistral-small-3.2-24b-instruct:free", "family": "Mistral", "strengths": ["fast"] },
+    { "id": "or-kimi-k2",              "provider": "openrouter", "model": "moonshotai/kimi-k2:free",                   "family": "Kimi",     "strengths": ["business"] },
+
+    { "id": "gh-gpt-4.1-mini",         "provider": "github",     "model": "openai/gpt-4.1-mini",                       "family": "GPT",      "strengths": ["reasoning", "finance", "factual"], "supervisorRank": 3 },
+    { "id": "gh-gpt-4o-mini",          "provider": "github",     "model": "openai/gpt-4o-mini",                        "family": "GPT",      "strengths": ["general"] },
+    { "id": "gh-phi-4",                "provider": "github",     "model": "microsoft/phi-4",                           "family": "Phi",      "strengths": ["math", "reasoning"] },
+
+    { "id": "cf-llama-3.3-70b",        "provider": "cloudflare", "model": "@cf/meta/llama-3.3-70b-instruct-fp8-fast",  "family": "Llama",    "strengths": ["general"] },
+    { "id": "cf-qwq-32b",              "provider": "cloudflare", "model": "@cf/qwen/qwq-32b",                          "family": "Qwen",     "strengths": ["reasoning"],                     "maxTokens": 2000 },
+
+    { "id": "local-llama-3.2-3b",      "provider": "ollama",     "model": "llama3.2:3b",                               "family": "Llama",    "strengths": ["offline"] },
+    { "id": "local-qwen2.5-3b",        "provider": "ollama",     "model": "qwen2.5:3b",                                "family": "Qwen",     "strengths": ["offline"] }
+  ]
+}
